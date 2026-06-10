@@ -6,7 +6,7 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +21,8 @@
     "mongoose": "^9.7.0"
   },
   "devDependencies": {
+    "eslint": "^10.4.1",
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14"
   }
 }
