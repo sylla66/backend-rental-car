@@ -85,3 +85,19 @@ npm test
 ## Notes
 
 Adjust configuration, routes, and database settings according to your project implementation.
+
+## Variables d'environnement (sécurité)
+
+Les valeurs sensibles (mots de passe, clefs, URLs de base de données) ne doivent pas être stockées en clair dans le dépôt.
+
+- Copiez `.env.example` en `.env` et remplissez les valeurs requises:
+
+```bash
+cp .env.example .env
+# puis éditez .env
+```
+
+- Le fichier `.env` est déjà listé dans `.gitignore` et ne doit pas être commité.
+
+- Exemple de variables utiles: `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD`, `DATABASE_URL`, `JWT_SECRET`.
+
