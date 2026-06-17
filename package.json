@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
@@ -11,7 +11,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "This repository contains the backend service for the Car Rental application.",
+  "description": "This repository contains the bvercel.jsonackend service for the Car Rental application.",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
