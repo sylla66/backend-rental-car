@@ -10,6 +10,7 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
 
+    # Démarre un vrai conteneur MongoDB disponible pendant tout le job
     services:
       mongodb:
         image: mongo:7
