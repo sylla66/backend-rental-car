@@ -19,7 +19,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Routes métier — on les décommente au fur et à mesure
-// app.use('/api/auth', require('./routes/authRoutes'));
+    app.use('/api/auth', require('./routes/authRoutes'));
 // app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 // app.use('/api/bookings', require('./routes/bookingRoutes'));
 
