@@ -11,7 +11,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "This repository contains the bvercel.jsonackend service for the Car Rental application.",
+  "description": "This repository contains the backend service for the Car Rental application.",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -34,5 +34,11 @@
   "bugs": {
     "url": "https://github.com/sylla66/backend-rental-car/issues"
   },
-  "homepage": "https://github.com/sylla66/backend-rental-car#readme"
+  "homepage": "https://github.com/sylla66/backend-rental-car#readme",
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/jest.setup.js"
+    ]
+  }
 }
