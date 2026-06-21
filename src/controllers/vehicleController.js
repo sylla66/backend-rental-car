@@ -14,12 +14,23 @@ const createVehicle = async (req, res, next) => {
   }
 };
 
-// ─── GET /api/vehicles (public, avec filtres) ────────────────────────────────
+// ─── GET /api/vehicles (public, avec filtres, recherche, tri, pagination) ────
 const getVehicles = async (req, res, next) => {
   try {
-    const { category, minPrice, maxPrice, isForRent, isForSale, status } = req.query;
+    const {
+      category,
+      minPrice,
+      maxPrice,
+      isForRent,
+      isForSale,
+      status,
+      search,
+      sort,
+      page,
+      limit,
+    } = req.query;
 
-    // On construit le filtre dynamiquement selon les query params présents
+    // 1. Filtres exacts — identiques à avant
     const filter = {};
 
     if (category) filter.categoryId = category;
@@ -33,10 +44,54 @@ const getVehicles = async (req, res, next) => {
       if (maxPrice) filter.dailyRate.$lte = Number(maxPrice);
     }
 
-    const vehicles = await Vehicle.find(filter).populate('categoryId', 'name');
+    // 2. Recherche texte — marque OU modèle contient le terme cherché
+    //    $options 'i' = insensible à la casse ("toyota" matche "Toyota")
+    if (search) {
+      filter.$or = [
+        { brand: { $regex: search, $options: 'i' } },
+        { model: { $regex: search, $options: 'i' } },
+      ];
+    }
 
-    return res.status(200).json({ count: vehicles.length, vehicles });
+    // 3. Tri — whitelist des valeurs acceptées pour éviter d'exposer
+    //    n'importe quel champ interne au tri via l'URL
+    const sortOptions = {
+      'price-asc': { dailyRate: 1 },
+      'price-desc': { dailyRate: -1 },
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+    };
+    const sortBy = sortOptions[sort] || sortOptions.newest;
+
+    // 4. Pagination — valeurs par défaut sûres si absentes ou invalides
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const limitNum = Math.min(Math.max(Number(limit) || 12, 1), 50); // cap à 50 max
+    const skip = (pageNum - 1) * limitNum;
+
+    // 5. On lance les deux requêtes en parallèle : les résultats de la page
+    //    + le compte total (nécessaire pour que le frontend affiche la pagination)
+    const [vehicles, total] = await Promise.all([
+      Vehicle.find(filter)
+        .populate('categoryId', 'name')
+        .sort(sortBy)
+        .skip(skip)
+        .limit(limitNum),
+      Vehicle.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      vehicles,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (err) {
+    if (err.name === 'CastError') {
+      return res.status(400).json({ error: 'category invalide' });
+    }
     next(err);
   }
 };
