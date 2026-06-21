@@ -18,9 +18,9 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', database: dbStatus });
 });
 
-// Routes métier — on les décommente au fur et à mesure
-    app.use('/api/auth', require('./routes/authRoutes'));
-// app.use('/api/vehicles', require('./routes/vehicleRoutes'));
+// Routes métier — branchées ici au fur et à mesure qu'on les construit
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 // app.use('/api/bookings', require('./routes/bookingRoutes'));
 
 // 404 handler — doit être après toutes les routes

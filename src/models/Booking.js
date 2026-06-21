@@ -34,11 +34,11 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-bookingSchema.pre('validate', function (next) {
+// endDate doit toujours être après startDate
+bookingSchema.pre('validate', function () {
   if (this.endDate <= this.startDate) {
-    return next(new Error('La date de fin doit être après la date de début'));
+    throw new Error('La date de fin doit être après la date de début');
   }
-  next();
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
