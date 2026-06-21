@@ -34,6 +34,7 @@ const vehicleSchema = new mongoose.Schema(
     dailyRate: {
       type: Number,
       min: 0,
+      // requis seulement si le véhicule est proposé à la location
       required: function () {
         return this.isForRent;
       },
@@ -41,6 +42,7 @@ const vehicleSchema = new mongoose.Schema(
     salePrice: {
       type: Number,
       min: 0,
+      // requis seulement si le véhicule est proposé à la vente
       required: function () {
         return this.isForSale;
       },
@@ -60,18 +62,18 @@ const vehicleSchema = new mongoose.Schema(
     },
     images: [
       {
-        type: String,
+        type: String, // URLs des images
       },
     ],
   },
   { timestamps: true }
 );
 
-vehicleSchema.pre('validate', function (next) {
+// Un véhicule doit être proposé à la location OU à la vente (ou les deux)
+vehicleSchema.pre('validate', function () {
   if (!this.isForRent && !this.isForSale) {
-    return next(new Error('Le véhicule doit être proposé en location et/ou en vente'));
+    throw new Error('Le véhicule doit être proposé en location et/ou en vente');
   }
-  next();
 });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);
