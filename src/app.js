@@ -21,7 +21,7 @@ app.get('/health', (_req, res) => {
 // Routes métier — branchées ici au fur et à mesure qu'on les construit
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/vehicles', require('./routes/vehicleRoutes'));
-// app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
 
 // 404 handler — doit être après toutes les routes
 app.use((req, res) => {
