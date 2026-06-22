@@ -21,6 +21,8 @@ jobs:
       MONGODB_URI: mongodb://localhost:27017/car-rental-test
       JWT_SECRET: test_secret_for_ci_only
       NODE_ENV: test
+      # Do not expose secrets at the job env level to avoid invalid context warnings.
+      # Set STRIPE_SECRET_KEY only for the step that needs it below.
 
     steps:
       - uses: actions/checkout@v4

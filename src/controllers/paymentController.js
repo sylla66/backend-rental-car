@@ -2,7 +2,17 @@ const Stripe = require('stripe');
 const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+let stripe;
+const getStripe = () => {
+  if (!stripe) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is required to initialize Stripe');
+    }
+    stripe = Stripe(secretKey);
+  }
+  return stripe;
+};
 
 // ─── POST /api/payments/create-intent ────────────────────────────────────────
 // Crée une intention de paiement Stripe pour une réservation existante.
@@ -51,7 +61,7 @@ const createPaymentIntent = async (req, res, next) => {
     const amountInUsdCents = Math.round(booking.totalPrice / 600 * 100); // ~600 XOF = 1 USD
 
     // 4. Créer le PaymentIntent côté Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntent = await getStripe().paymentIntents.create({
       amount: amountInUsdCents,
       currency: 'usd',
       metadata: {
@@ -106,7 +116,7 @@ const handleStripeWebhook = async (req, res) => {
   try {
     // Vérifie que l'événement vient bien de Stripe (signature cryptographique)
     // et pas d'un attaquant qui simulerait un faux paiement réussi.
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = getStripe().webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature invalide:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
