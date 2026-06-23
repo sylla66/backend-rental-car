@@ -1,23 +1,13 @@
-const Stripe = require('stripe');
-const Payment = require('../models/Payment');
-const Booking = require('../models/Booking');
+'use strict';
 
-let stripe;
-const getStripe = () => {
-  if (!stripe) {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is required to initialize Stripe');
-    }
-    stripe = Stripe(secretKey);
-  }
-  return stripe;
-};
+const { Booking, Payment, SaleOrder, Vehicle } = require('../models');
+const { getStripe } = require('../utils/stripe');
+
+// Taux de conversion unique : ~600 XOF = 1 USD
+// Même valeur utilisée dans tous les controllers
+const xofToUsdCents = (xof) => Math.round((xof / 600) * 100);
 
 // ─── POST /api/payments/create-intent ────────────────────────────────────────
-// Crée une intention de paiement Stripe pour une réservation existante.
-// Le frontend utilisera le client_secret retourné avec Stripe Elements
-// pour afficher le formulaire de carte et finaliser le paiement.
 const createPaymentIntent = async (req, res, next) => {
   try {
     const { bookingId } = req.body;
@@ -26,7 +16,6 @@ const createPaymentIntent = async (req, res, next) => {
       return res.status(400).json({ error: 'bookingId est requis' });
     }
 
-    // 1. Récupérer la réservation et vérifier qu'elle appartient bien au user
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ error: 'Réservation introuvable' });
@@ -43,8 +32,6 @@ const createPaymentIntent = async (req, res, next) => {
       });
     }
 
-    // 2. Empêcher de payer deux fois la même réservation : si un Payment
-    //    "paid" existe déjà pour ce booking, on bloque ici.
     const existingPaid = await Payment.findOne({
       referenceId: booking._id,
       referenceModel: 'Booking',
@@ -54,13 +41,8 @@ const createPaymentIntent = async (req, res, next) => {
       return res.status(409).json({ error: 'Cette réservation a déjà été payée' });
     }
 
-    // 3. Stripe attend le montant en "plus petite unité" de la devise.
-    //    En USD/EUR : centimes (1 USD = 100). On convertit le XOF du
-    //    totalPrice vers USD pour la démo Stripe (taux fixe simplifié ici ;
-    //    en vrai projet on utiliserait un taux de change à jour).
-    const amountInUsdCents = Math.round(booking.totalPrice / 600 * 100); // ~600 XOF = 1 USD
+    const amountInUsdCents = xofToUsdCents(booking.totalPrice);
 
-    // 4. Créer le PaymentIntent côté Stripe
     const paymentIntent = await getStripe().paymentIntents.create({
       amount: amountInUsdCents,
       currency: 'usd',
@@ -70,9 +52,6 @@ const createPaymentIntent = async (req, res, next) => {
       },
     });
 
-    // 5. Créer (ou mettre à jour) notre enregistrement Payment local en "pending"
-    //    On le crée maintenant pour avoir une trace, même si le paiement
-    //    n'est pas encore confirmé — le webhook le passera à "paid".
     let payment = await Payment.findOne({
       referenceId: booking._id,
       referenceModel: 'Booking',
@@ -105,54 +84,61 @@ const createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// ─── POST /api/payments/webhook (appelé par Stripe, PAS par le frontend) ────
-// Stripe envoie cet événement de manière asynchrone, indépendamment de la
-// requête du navigateur du client. C'est la SEULE source de vérité fiable
-// pour savoir si un paiement a réellement abouti.
+// ─── POST /api/payments/webhook ──────────────────────────────────────────────
+// Déclaré AVANT express.json() dans app.js (corps brut requis pour la signature)
 const handleStripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    // Vérifie que l'événement vient bien de Stripe (signature cryptographique)
-    // et pas d'un attaquant qui simulerait un faux paiement réussi.
-    event = getStripe().webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = getStripe().webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
   } catch (err) {
     console.error('Webhook signature invalide:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntent = event.data.object;
+  try {
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object;
 
-    try {
-      const payment = await Payment.findOne({
-        stripePaymentIntentId: paymentIntent.id,
-      });
+      const payment = await Payment.findOne({ stripePaymentIntentId: pi.id });
 
       if (payment && payment.status !== 'paid') {
         payment.status = 'paid';
         payment.paidAt = new Date();
         await payment.save();
 
-        // On confirme aussi la réservation associée
-        await Booking.findByIdAndUpdate(payment.referenceId, { status: 'confirmed' });
+        if (payment.referenceModel === 'Booking') {
+          await Booking.findByIdAndUpdate(payment.referenceId, { status: 'confirmed' });
+        }
+
+        if (payment.referenceModel === 'SaleOrder') {
+          const order = await SaleOrder.findById(payment.referenceId);
+          if (order && order.status === 'pending') {
+            order.status = 'paid';
+            await order.save();
+            // Bloquer d'autres commandes sur ce véhicule (vendu sous réserve)
+            await Vehicle.findByIdAndUpdate(order.vehicle, { isAvailableForSale: false });
+          }
+        }
       }
-    } catch (err) {
-      console.error('Erreur traitement webhook:', err.message);
-      return res.status(500).send('Erreur interne');
     }
+
+    if (event.type === 'payment_intent.payment_failed') {
+      await Payment.findOneAndUpdate(
+        { stripePaymentIntentId: event.data.object.id },
+        { status: 'failed' }
+      );
+    }
+  } catch (err) {
+    console.error('Erreur traitement webhook:', err.message);
+    return res.status(500).send('Erreur interne');
   }
 
-  if (event.type === 'payment_intent.payment_failed') {
-    const paymentIntent = event.data.object;
-    await Payment.findOneAndUpdate(
-      { stripePaymentIntentId: paymentIntent.id },
-      { status: 'failed' }
-    );
-  }
-
-  // Toujours répondre 200 à Stripe pour accuser réception, sinon il réessaiera
   return res.status(200).json({ received: true });
 };
 

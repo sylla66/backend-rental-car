@@ -26,6 +26,9 @@ const register = async (req, res, next) => {
     if (existing) {
       return res.status(409).json({ error: 'Cet email est déjà utilisé' });
     }
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Le mot de passe doit faire au moins 4 caractères' });
+    }
 
     // 3. Hasher le mot de passe (10 rounds = bon équilibre sécurité/performance)
     const passwordHash = await bcrypt.hash(password, 10);

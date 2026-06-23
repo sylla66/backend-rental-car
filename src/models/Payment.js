@@ -28,6 +28,11 @@ const paymentSchema = new mongoose.Schema(
       enum: ['stripe', 'paydunya', 'manual'],
       default: 'stripe',
     },
+    currency: {
+      type: String,
+      enum: ['XOF', 'USD', 'EUR'],
+      default: 'XOF',
+    },
     // ID Stripe nécessaire pour retrouver le Payment local depuis un
     // événement webhook (Stripe ne connaît pas notre _id MongoDB)
     stripePaymentIntentId: {
