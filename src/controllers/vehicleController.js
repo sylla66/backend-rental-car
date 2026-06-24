@@ -210,7 +210,8 @@ const getVehicles = async (req, res, next) => {
 // ─── GET /api/vehicles/:id (public) ──────────────────────────────────────────
 const getVehicleById = async (req, res, next) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id).populate('categoryId', 'name');
+    // ✅ Après
+const vehicle = await Vehicle.findById(req.params.id).populate('category', 'name');
 
     if (!vehicle) {
       return res.status(404).json({ error: 'Véhicule introuvable' });
