@@ -56,11 +56,12 @@ const createBooking = async (req, res, next) => {
     if (!vehicle) {
       return res.status(404).json({ error: 'Véhicule introuvable' });
     }
-    if (!vehicle.isForRent) {
-      return res.status(400).json({ error: "Ce véhicule n'est pas disponible à la location" });
+    // ✅ Après
+    if (!vehicle.isAvailable) {
+      return res.status(400).json({ error: "Ce véhicule n'est pas disponible à la location." });
     }
-    if (vehicle.status === 'maintenance' || vehicle.status === 'sold') {
-      return res.status(400).json({ error: `Véhicule indisponible (statut: ${vehicle.status})` });
+    if (vehicle.isSold) {
+      return res.status(400).json({ error: 'Ce véhicule a été vendu et ne peut plus être loué.' });
     }
 
     // 2. Vérifier qu'aucune réservation existante ne chevauche ces dates
