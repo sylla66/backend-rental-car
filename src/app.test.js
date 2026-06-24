@@ -23,3 +23,15 @@ describe('Health check', () => {
     expect(response.body).toHaveProperty('error');
   });
 });
+
+describe('Vehicle catalog', () => {
+  test('GET /api/vehicles returns demo vehicles with images', async () => {
+    const response = await request(app).get('/api/vehicles');
+
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body.vehicles)).toBe(true);
+    expect(response.body.vehicles.length).toBeGreaterThan(0);
+    expect(response.body.vehicles[0]).toHaveProperty('images');
+    expect(response.body.vehicles[0].images.length).toBeGreaterThan(0);
+  });
+});

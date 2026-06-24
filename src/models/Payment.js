@@ -7,6 +7,7 @@ const paymentSchema = new mongoose.Schema(
       enum: ['booking', 'sale'],
       required: true,
     },
+    // Référence dynamique : pointe soit vers Booking, soit vers SaleOrder
     referenceId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
@@ -24,8 +25,18 @@ const paymentSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: ['stripe', 'manual'],
+      enum: ['stripe', 'paydunya', 'manual'],
       default: 'stripe',
+    },
+    currency: {
+      type: String,
+      enum: ['XOF', 'USD', 'EUR'],
+      default: 'XOF',
+    },
+    // ID Stripe nécessaire pour retrouver le Payment local depuis un
+    // événement webhook (Stripe ne connaît pas notre _id MongoDB)
+    stripePaymentIntentId: {
+      type: String,
     },
     status: {
       type: String,

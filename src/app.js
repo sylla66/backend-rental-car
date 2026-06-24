@@ -5,6 +5,14 @@ const app = express();
 
 // Middlewares globaux
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+
+// ⚠️ Le webhook Stripe DOIT être déclaré AVANT express.json().
+// Stripe a besoin du corps brut (non parsé) pour vérifier sa signature
+// cryptographique — express.raw() préserve ce corps tel quel, contrairement
+// à express.json() qui le transforme en objet JS et casse la vérification.
+const { handleStripeWebhook } = require('./controllers/paymentController');
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
+
 app.use(express.json());
 
 // Routes de base
@@ -22,6 +30,10 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/sale-orders', require('./routes/saleOrderRoutes'));
+
+app.use('/api/reviews', require('./routes/reviewRoutes'));
 
 // 404 handler — doit être après toutes les routes
 app.use((req, res) => {

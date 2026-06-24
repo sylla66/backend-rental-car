@@ -1,79 +1,50 @@
-const mongoose = require('mongoose');
 
+// ─── Exemple de schéma complet après patch ──────────────────────────────────
+'use strict';
+ 
+const mongoose = require('mongoose');
+ 
 const vehicleSchema = new mongoose.Schema(
   {
-    categoryId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Category',
-      required: true,
-    },
-    brand: {
+    // ── champs existants ──────────────────────────────────────────────────────
+    name: { type: String, required: true, trim: true },
+    brand: { type: String, required: true, trim: true },
+    model: { type: String, required: true, trim: true },
+    year: { type: Number, required: true },
+    category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+    dailyRate: { type: Number, required: true, min: 0 },      // tarif location (XOF)
+    images: [{ type: String }],
+    description: { type: String, trim: true },
+    isAvailable: { type: Boolean, default: true },            // dispo pour location
+    licensePlate: { type: String, unique: true, trim: true },
+    mileage: { type: Number, default: 0 },
+    fuelType: {
       type: String,
-      required: true,
-      trim: true,
-    },
-    model: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    year: {
-      type: Number,
-      required: true,
+      enum: ['essence', 'diesel', 'electrique', 'hybride'],
+      default: 'essence',
     },
     transmission: {
       type: String,
-      enum: ['manual', 'automatic'],
-      required: true,
+      enum: ['manuelle', 'automatique'],
+      default: 'manuelle',
     },
-    fuelType: {
-      type: String,
-      enum: ['petrol', 'diesel', 'electric', 'hybrid'],
-      required: true,
-    },
-    dailyRate: {
-      type: Number,
-      min: 0,
-      // requis seulement si le véhicule est proposé à la location
-      required: function () {
-        return this.isForRent;
-      },
-    },
+ 
+    // ── nouveaux champs vente ─────────────────────────────────────────────────
     salePrice: {
       type: Number,
+      default: null,        // null = véhicule non mis en vente
       min: 0,
-      // requis seulement si le véhicule est proposé à la vente
-      required: function () {
-        return this.isForSale;
-      },
     },
-    isForRent: {
+    isAvailableForSale: {
       type: Boolean,
-      default: true,
+      default: false,       // l'admin active explicitement la mise en vente
     },
-    isForSale: {
+    isSold: {
       type: Boolean,
-      default: false,
+      default: false,       // true une fois la livraison confirmée
     },
-    status: {
-      type: String,
-      enum: ['available', 'rented', 'sold', 'maintenance'],
-      default: 'available',
-    },
-    images: [
-      {
-        type: String, // URLs des images
-      },
-    ],
   },
   { timestamps: true }
 );
-
-// Un véhicule doit être proposé à la location OU à la vente (ou les deux)
-vehicleSchema.pre('validate', function () {
-  if (!this.isForRent && !this.isForSale) {
-    throw new Error('Le véhicule doit être proposé en location et/ou en vente');
-  }
-});
-
+ 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

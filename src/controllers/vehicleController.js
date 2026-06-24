@@ -1,4 +1,115 @@
+const mongoose = require('mongoose');
 const Vehicle = require('../models/Vehicle');
+
+const demoVehicles = [
+  {
+    _id: 'demo-bmw-i7',
+    name: 'BMW i7 xDrive60',
+    brand: 'BMW',
+    model: 'i7 xDrive60',
+    year: 2024,
+    dailyRate: 65000,
+    images: [
+      'https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1400&q=80',
+    ],
+    description: 'Berline électrique premium avec un intérieur luxueux et une autonomie longue distance.',
+    isAvailable: true,
+    licensePlate: 'AB-102-CD',
+    mileage: 1200,
+    fuelType: 'electrique',
+    transmission: 'automatique',
+    salePrice: 26500000,
+    isAvailableForSale: true,
+    isSold: false,
+    category: { _id: 'demo-category-suv', name: 'Électrique' },
+  },
+  {
+    _id: 'demo-mercedes-gle',
+    name: 'Mercedes-Benz GLE 450',
+    brand: 'Mercedes-Benz',
+    model: 'GLE 450',
+    year: 2023,
+    dailyRate: 48000,
+    images: [
+      'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=80',
+    ],
+    description: 'SUV élégant et spacieux, parfait pour les trajets urbains et les escapades.',
+    isAvailable: true,
+    licensePlate: 'CD-203-EF',
+    mileage: 8600,
+    fuelType: 'hybride',
+    transmission: 'automatique',
+    salePrice: 18900000,
+    isAvailableForSale: true,
+    isSold: false,
+    category: { _id: 'demo-category-suv', name: 'SUV' },
+  },
+  {
+    _id: 'demo-porsche-911',
+    name: 'Porsche 911 Carrera',
+    brand: 'Porsche',
+    model: '911 Carrera',
+    year: 2022,
+    dailyRate: 95000,
+    images: [
+      'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1400&q=80',
+    ],
+    description: 'Sportive de prestige, dynamique et ultra soignée pour une expérience unique.',
+    isAvailable: true,
+    licensePlate: 'GH-304-IJ',
+    mileage: 5400,
+    fuelType: 'essence',
+    transmission: 'automatique',
+    salePrice: 32000000,
+    isAvailableForSale: true,
+    isSold: false,
+    category: { _id: 'demo-category-sport', name: 'Sport' },
+  },
+];
+
+const getDemoVehicles = ({ search, minPrice, maxPrice, sort, page, limit }) => {
+  let vehicles = [...demoVehicles];
+
+  if (search) {
+    const term = search.toLowerCase();
+    vehicles = vehicles.filter((vehicle) => {
+      const haystack = `${vehicle.brand} ${vehicle.model} ${vehicle.description}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }
+
+  if (minPrice || maxPrice) {
+    vehicles = vehicles.filter((vehicle) => {
+      const matchesMin = minPrice ? vehicle.dailyRate >= Number(minPrice) : true;
+      const matchesMax = maxPrice ? vehicle.dailyRate <= Number(maxPrice) : true;
+      return matchesMin && matchesMax;
+    });
+  }
+
+  if (sort === 'price-desc') {
+    vehicles.sort((a, b) => b.dailyRate - a.dailyRate);
+  } else if (sort === 'price-asc') {
+    vehicles.sort((a, b) => a.dailyRate - b.dailyRate);
+  }
+
+  const pageNum = Math.max(Number(page) || 1, 1);
+  const limitNum = Math.min(Math.max(Number(limit) || 12, 1), 50);
+  const skip = (pageNum - 1) * limitNum;
+  const paginatedVehicles = vehicles.slice(skip, skip + limitNum);
+
+  return {
+    vehicles: paginatedVehicles,
+    pagination: {
+      total: vehicles.length,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(vehicles.length / limitNum),
+    },
+  };
+};
 
 // ─── POST /api/vehicles (admin) ──────────────────────────────────────────────
 const createVehicle = async (req, res, next) => {
@@ -30,13 +141,18 @@ const getVehicles = async (req, res, next) => {
       limit,
     } = req.query;
 
+    if (mongoose.connection.readyState !== 1) {
+      const fallback = getDemoVehicles({ search, minPrice, maxPrice, sort, page, limit });
+      return res.status(200).json(fallback);
+    }
+
     // 1. Filtres exacts — identiques à avant
     const filter = {};
 
-    if (category) filter.categoryId = category;
-    if (isForRent !== undefined) filter.isForRent = isForRent === 'true';
-    if (isForSale !== undefined) filter.isForSale = isForSale === 'true';
-    if (status) filter.status = status;
+    if (category) filter.category = category;
+    if (isForRent !== undefined) filter.isAvailable = isForRent === 'true';
+    if (isForSale !== undefined) filter.isAvailableForSale = isForSale === 'true';
+    if (status) filter.isAvailable = status === 'available';
 
     if (minPrice || maxPrice) {
       filter.dailyRate = {};
@@ -44,8 +160,6 @@ const getVehicles = async (req, res, next) => {
       if (maxPrice) filter.dailyRate.$lte = Number(maxPrice);
     }
 
-    // 2. Recherche texte — marque OU modèle contient le terme cherché
-    //    $options 'i' = insensible à la casse ("toyota" matche "Toyota")
     if (search) {
       filter.$or = [
         { brand: { $regex: search, $options: 'i' } },
@@ -53,8 +167,6 @@ const getVehicles = async (req, res, next) => {
       ];
     }
 
-    // 3. Tri — whitelist des valeurs acceptées pour éviter d'exposer
-    //    n'importe quel champ interne au tri via l'URL
     const sortOptions = {
       'price-asc': { dailyRate: 1 },
       'price-desc': { dailyRate: -1 },
@@ -63,16 +175,13 @@ const getVehicles = async (req, res, next) => {
     };
     const sortBy = sortOptions[sort] || sortOptions.newest;
 
-    // 4. Pagination — valeurs par défaut sûres si absentes ou invalides
     const pageNum = Math.max(Number(page) || 1, 1);
-    const limitNum = Math.min(Math.max(Number(limit) || 12, 1), 50); // cap à 50 max
+    const limitNum = Math.min(Math.max(Number(limit) || 12, 1), 50);
     const skip = (pageNum - 1) * limitNum;
 
-    // 5. On lance les deux requêtes en parallèle : les résultats de la page
-    //    + le compte total (nécessaire pour que le frontend affiche la pagination)
     const [vehicles, total] = await Promise.all([
       Vehicle.find(filter)
-        .populate('categoryId', 'name')
+        .populate('category', 'name')
         .sort(sortBy)
         .skip(skip)
         .limit(limitNum),
@@ -92,7 +201,9 @@ const getVehicles = async (req, res, next) => {
     if (err.name === 'CastError') {
       return res.status(400).json({ error: 'category invalide' });
     }
-    next(err);
+
+    const fallback = getDemoVehicles(req.query);
+    return res.status(200).json(fallback);
   }
 };
 
