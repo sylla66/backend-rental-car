@@ -4,15 +4,11 @@ const cors = require('cors');
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
 // Liste des origines autorisées
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .filter(origin => origin.trim())
-  .map(origin => origin.trim());
-
-// Ajouter FRONTEND_URL si présent
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
+// ✅ Après — déduplication avec Set
+const allowedOrigins = [...new Set([
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
+  process.env.FRONTEND_URL,
+].filter(Boolean))];
 
 //console.log('📋 Origines CORS autorisées:', allowedOrigins);
 
