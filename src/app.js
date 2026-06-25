@@ -35,6 +35,7 @@ app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/sale-orders', require('./routes/saleOrderRoutes'));
 
 app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // 404 handler — doit être après toutes les routes
 app.use((req, res) => {
