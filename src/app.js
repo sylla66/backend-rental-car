@@ -4,7 +4,8 @@ const cors = require('cors');
 const app = express();
 
 // Middlewares globaux
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+const corsMiddleware = require('./middleware/corsMiddleware');
+app.use(corsMiddleware);
 
 // ⚠️ Le webhook Stripe DOIT être déclaré AVANT express.json().
 // Stripe a besoin du corps brut (non parsé) pour vérifier sa signature
