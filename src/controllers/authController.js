@@ -26,8 +26,9 @@ const register = async (req, res, next) => {
     if (existing) {
       return res.status(409).json({ error: 'Cet email est déjà utilisé' });
     }
-    if (password.length < 4) {
-      return res.status(400).json({ error: 'Le mot de passe doit faire au moins 4 caractères' });
+    if (password.length < 8) {
+      // ✅ Après
+      return res.status(400).json({ error: 'Le mot de passe doit faire au moins 8 caractères' });
     }
 
     // 3. Hasher le mot de passe (10 rounds = bon équilibre sécurité/performance)
@@ -73,7 +74,6 @@ const login = async (req, res, next) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
-    // 3. Comparer le mot de passe avec le hash stocké
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
