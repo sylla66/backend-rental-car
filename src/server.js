@@ -5,7 +5,6 @@ const connectDB = require('./config/db');
 
 // Force le chargement de tous les modèles Mongoose avant que les routes
 // ne soient utilisées — nécessaire pour que populate() trouve toujours
-// le modèle référencé (ex: Vehicle.populate('categoryId') a besoin que
 // Category soit déjà enregistré auprès de mongoose).
 require('./models');
 
